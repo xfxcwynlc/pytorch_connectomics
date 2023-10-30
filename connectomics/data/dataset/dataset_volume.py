@@ -241,13 +241,17 @@ class VolumeDataset(torch.utils.data.Dataset):
     # Volume Sampler
     #######################################################
     def _rejection_sampling(self, vol_size):
-        """Rejection sampling to filter out samples without required number
+        """Rejection sampling to filter out samples without required numberout_volume
         of foreground pixels or valid ratio.
         """
         sample_count = 0
         while True:
             sample = self._random_sampling(vol_size)
             pos, out_volume, out_label, out_valid = sample
+            if out_volume.shape[1]!=vol_size[1] or out_volume.shape[2]!=vol_size[2]:
+                #TODO adjust output volume valid shape 
+                sample_count += 1
+                continue
             if self.augmentor is not None:
 
                 if out_valid is not None:
@@ -263,7 +267,7 @@ class VolumeDataset(torch.utils.data.Dataset):
                 out_volume, out_label = augmented['image'], augmented['label']
                 out_valid = augmented['valid_mask']
 
-            if self._is_valid(out_valid) and self._is_fg(out_label):
+            if self._is_valid(out_valid) and self._is_fg(out_label) : 
                 return pos, out_volume, out_label, out_valid
 
             sample_count += 1

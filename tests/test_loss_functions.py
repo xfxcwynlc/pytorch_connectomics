@@ -8,7 +8,7 @@ from connectomics.model.loss import Criterion
 class TestCriterion(unittest.TestCase):
 
     def test_regularization(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         criterion = Criterion(device, target_opt=['0', '6'],
                               loss_opt=[['WeightedBCEWithLogitsLoss',
                                          'DiceLoss'], ['WeightedMSE']],

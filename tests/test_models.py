@@ -14,8 +14,8 @@ from connectomics.config import get_cfg_defaults
 class TestModelBlock(unittest.TestCase):
     def setUp(self) -> None:
         self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
-        self.num_gpu = torch.cuda.device_count()
+            "mps" if torch.backends.mps.is_available() else "cpu")
+        self.num_gpu = 1 #torch.cuda.device_count()
 
     def test_unet_3d(self):
         """Tested UNet3D model with odd and even input sizes.
