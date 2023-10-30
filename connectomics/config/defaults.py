@@ -10,8 +10,8 @@ _C = CN()
 # -----------------------------------------------------------------------------
 _C.SYSTEM = CN()
 
-_C.SYSTEM.NUM_GPUS = 4
-_C.SYSTEM.NUM_CPUS = 4
+_C.SYSTEM.NUM_GPUS = 1
+_C.SYSTEM.NUM_CPUS = 8
 # Run distributed training using DistributedDataparallel model
 _C.SYSTEM.DISTRIBUTED = False
 _C.SYSTEM.PARALLEL = 'DP'
@@ -67,13 +67,13 @@ _C.MODEL.IN_PLANES = 1
 _C.MODEL.OUT_PLANES = 1
 
 # Padding mode, possible options: 'zeros','circular', 'reflect', 'replicate'
-_C.MODEL.PAD_MODE = 'replicate'
+_C.MODEL.PAD_MODE = 'zeros'
 
 # Normalization mode, possible options: 'bn', 'sync_bn', 'in', 'gn', 'none'
 _C.MODEL.NORM_MODE = 'bn'
 
 # Activation mode, possible options: 'relu', 'elu', 'leaky'
-_C.MODEL.ACT_MODE = 'elu'
+_C.MODEL.ACT_MODE = 'relu' #or leaky
 
 # Use pooling layer for downsampling
 _C.MODEL.POOLING_LAYER = False
@@ -196,7 +196,7 @@ _C.DATASET.LABEL_SCALE = None
 _C.DATASET.VALID_MASK_SCALE = None
 
 # Scaling factor for super resolution
-_C.DATASET.SCALE_FACTOR = [2, 3, 3]
+_C.DATASET.SCALE_FACTOR = [1, 1, 1]
 
 # Specify the data path in the *.yaml files for different experiments.
 _C.DATASET.IMAGE_NAME = None
@@ -224,7 +224,7 @@ _C.DATASET.LOAD_2D = False
 _C.DATASET.DROP_CHANNEL = False
 
 # Reduce the the mask indicies in a sampled label volume
-_C.DATASET.REDUCE_LABEL = True
+_C.DATASET.REDUCE_LABEL = False 
 
 # Padding size for the input volumes
 _C.DATASET.PAD_SIZE = [2, 64, 64]
@@ -233,13 +233,13 @@ _C.DATASET.PAD_MODE = 'reflect'  # reflect, constant, symmetric
 # Upsample the input to at least the required sample size. If data 
 # augmentor is used, the min_size is augmentor.sample_size, else is
 # MODEL.INPUT_SIZE.
-_C.DATASET.ENSURE_MIN_SIZE = False
+_C.DATASET.ENSURE_MIN_SIZE = True
 
 # Normalize the image and cast to uint8 format
 _C.DATASET.NORMALIZE_RANGE = True
 
 # If it's a binary label
-_C.DATASET.LABEL_BINARY = False
+_C.DATASET.LABEL_BINARY = True
 
 _C.DATASET.LABEL_MAG = 0
 
@@ -286,7 +286,7 @@ _C.DATASET.DISTRIBUTED = False
 # -----------------------------------------------------------------------------
 # Augmentor
 # -----------------------------------------------------------------------------
-_C.AUGMENTOR = CN({"ENABLED": True})
+_C.AUGMENTOR = CN({"ENABLED": False})
 
 # The nearest interpolation for the label mask during data augmentation
 # can result in masks with coarse boundaries. Thus we apply Gaussian filtering
@@ -302,24 +302,24 @@ _C.AUGMENTOR.ADDITIONAL_TARGETS_TYPE = ['mask']
 
 # _C.AUGMENTOR.[xxx].SKIP specify the sample
 # key to skip for that augmentation
-_C.AUGMENTOR.ROTATE = CN({"ENABLED": True})
+_C.AUGMENTOR.ROTATE = CN({"ENABLED": False})
 _C.AUGMENTOR.ROTATE.ROT90 = True
 _C.AUGMENTOR.ROTATE.P = 1.0
 _C.AUGMENTOR.ROTATE.SKIP = []
 
-_C.AUGMENTOR.RESCALE = CN({"ENABLED": True})
+_C.AUGMENTOR.RESCALE = CN({"ENABLED": False})
 _C.AUGMENTOR.RESCALE.FIX_ASPECT = False
 _C.AUGMENTOR.RESCALE.P = 0.5
 _C.AUGMENTOR.RESCALE.SKIP = []
 
-_C.AUGMENTOR.FLIP = CN({"ENABLED": True})
+_C.AUGMENTOR.FLIP = CN({"ENABLED": False})
 _C.AUGMENTOR.FLIP.P = 1.0
 # Conducting x-z and y-z flip only when the dataset is isotropic
 # and the input is cubic.
 _C.AUGMENTOR.FLIP.DO_ZTRANS = 0
 _C.AUGMENTOR.FLIP.SKIP = []
 
-_C.AUGMENTOR.ELASTIC = CN({"ENABLED": True})
+_C.AUGMENTOR.ELASTIC = CN({"ENABLED": False})
 _C.AUGMENTOR.ELASTIC.P = 0.75
 # Maximum pixel-moving distance of elastic transformation
 _C.AUGMENTOR.ELASTIC.ALPHA = 16.0
@@ -327,22 +327,22 @@ _C.AUGMENTOR.ELASTIC.ALPHA = 16.0
 _C.AUGMENTOR.ELASTIC.SIGMA = 4.0
 _C.AUGMENTOR.ELASTIC.SKIP = []
 
-_C.AUGMENTOR.GRAYSCALE = CN({"ENABLED": True})
+_C.AUGMENTOR.GRAYSCALE = CN({"ENABLED": False})
 _C.AUGMENTOR.GRAYSCALE.P = 0.75
 _C.AUGMENTOR.GRAYSCALE.SKIP = []
 
 # Randomly mask out some input regions
-_C.AUGMENTOR.MISSINGPARTS = CN({"ENABLED": True})
+_C.AUGMENTOR.MISSINGPARTS = CN({"ENABLED": False})
 _C.AUGMENTOR.MISSINGPARTS.P = 0.9
 _C.AUGMENTOR.MISSINGPARTS.ITER = 64
 _C.AUGMENTOR.MISSINGPARTS.SKIP = []
 
-_C.AUGMENTOR.MISSINGSECTION = CN({"ENABLED": True})
+_C.AUGMENTOR.MISSINGSECTION = CN({"ENABLED": False})
 _C.AUGMENTOR.MISSINGSECTION.P = 0.5
 _C.AUGMENTOR.MISSINGSECTION.NUM_SECTION = 2
 _C.AUGMENTOR.MISSINGSECTION.SKIP = []
 
-_C.AUGMENTOR.MISALIGNMENT = CN({"ENABLED": True})
+_C.AUGMENTOR.MISALIGNMENT = CN({"ENABLED": False})
 _C.AUGMENTOR.MISALIGNMENT.P = 0.5
 # Maximum pixel displacement in each direction (x and y) (int)
 _C.AUGMENTOR.MISALIGNMENT.DISPLACEMENT = 16
@@ -350,7 +350,7 @@ _C.AUGMENTOR.MISALIGNMENT.DISPLACEMENT = 16
 _C.AUGMENTOR.MISALIGNMENT.ROTATE_RATIO = 0.5
 _C.AUGMENTOR.MISALIGNMENT.SKIP = []
 
-_C.AUGMENTOR.MOTIONBLUR = CN({"ENABLED": True})
+_C.AUGMENTOR.MOTIONBLUR = CN({"ENABLED": False})
 _C.AUGMENTOR.MOTIONBLUR.P = 0.5
 # Number of sections along z dimension to apply motion blur
 _C.AUGMENTOR.MOTIONBLUR.SECTIONS = 2
@@ -358,7 +358,7 @@ _C.AUGMENTOR.MOTIONBLUR.SECTIONS = 2
 _C.AUGMENTOR.MOTIONBLUR.KERNEL_SIZE = 11
 _C.AUGMENTOR.MOTIONBLUR.SKIP = []
 
-_C.AUGMENTOR.CUTBLUR = CN({"ENABLED": True})
+_C.AUGMENTOR.CUTBLUR = CN({"ENABLED": False})
 _C.AUGMENTOR.CUTBLUR.P = 0.5
 _C.AUGMENTOR.CUTBLUR.LENGTH_RATIO = 0.4
 _C.AUGMENTOR.CUTBLUR.DOWN_RATIO_MIN = 2.0
@@ -366,7 +366,7 @@ _C.AUGMENTOR.CUTBLUR.DOWN_RATIO_MAX = 8.0
 _C.AUGMENTOR.CUTBLUR.DOWNSAMPLE_Z = False
 _C.AUGMENTOR.CUTBLUR.SKIP = []
 
-_C.AUGMENTOR.CUTNOISE = CN({"ENABLED": True})
+_C.AUGMENTOR.CUTNOISE = CN({"ENABLED": False})
 _C.AUGMENTOR.CUTNOISE.P = 0.75
 _C.AUGMENTOR.CUTNOISE.LENGTH_RATIO = 0.4
 _C.AUGMENTOR.CUTNOISE.SCALE = 0.3
