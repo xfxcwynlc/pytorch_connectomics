@@ -5,7 +5,7 @@ import random
 import numpy as np
 import torch
 import torch.distributed as dist
-import torch.backends.cudnn as cudnn
+import torch.backends.cudnn as cudnn #TODO cudnn might create problems with mps!
 
 __all__ = [
     'get_args',
@@ -84,12 +84,12 @@ def init_devices(args, cfg):
             else args.manual_seed
     else:
         manual_seed = 0 if args.manual_seed is None else args.manual_seed
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
     print("rank: {}, device: {}, seed: {}".format(args.local_rank, device, manual_seed))
     # use manual_seed seeds for reproducibility
     init_seed(manual_seed)
-    cudnn.enabled = True
+    cudnn.enabled = True 
     cudnn.benchmark = True
 
     return device
