@@ -3,6 +3,7 @@ from typing import Optional, List
 
 import torch
 import torch.nn as nn
+import scipy.ndimage as ndi
 import torch.nn.functional as F
 
 
@@ -25,6 +26,116 @@ class BinaryReg(nn.Module):
         if mask is not None:
             loss *= mask
         return loss.mean()
+
+
+class CurvatureReg(nn.Module):
+    '''
+    Regularization for the curvature over the surface
+    Args:
+        pred (torch.Tensor): foreground logits.
+        sigma (int): sigma to smooth the surface
+    '''
+    def __init__(self, thres=0.1, sigma=5,kernel_size=9,mode='tv') -> None:
+        '''
+        Args:
+        - thres, threshold to binarize prediction logits, default 0.1
+        - sigma, Standard deviation of the Gaussian.
+        - kernel_size, int, odd number for kernel size in Gaussian
+        - mode, str, 'tv' for total variation, 'mean' for mean
+        '''
+        super().__init__()
+        assert mode in ['tv','mean']
+        self.thres = thres
+        self.sigma = sigma 
+        self.kernal_size = kernel_size
+        self.mode = mode
+        self.gaussian_kernel = self.gaussian_3d(self.kernal_size).unsqueeze(0).unsqueeze(0)
+    
+    def gaussian_3d(self, kernel_size=9):
+        """
+        Generates a 3D Gaussian kernel.
+        Args:
+            kernel_size (int): Size of the kernel (it should be odd).
+        Returns:
+            torch.Tensor: 3D Gaussian kernel.
+        """
+        kernel_range = torch.arange(-(kernel_size // 2), kernel_size // 2 + 1, dtype=torch.float32)
+        xx, yy, zz = torch.meshgrid(kernel_range, kernel_range, kernel_range)
+        kernel = torch.exp(-(xx**2 + yy**2 + zz**2) / (2 * self.sigma**2))
+        return kernel / kernel.sum()
+
+    # def signed_distance_transform(self, logits):
+    #     dist = ndi.distance_transform_edt(binary_map) - ndi.distance_transform_edt(inverse_map)
+
+    def get_mask(self, pred, act_full=False):
+        '''
+        Computing the narrow band by taking morphology mask
+
+        Args:
+        - pred, probabilistic prediction, of shape (N,C,H,W,L)
+        - act_full, bool, includes narrow band on surface (F) or all values > thres (T)
+        Returns:
+        - mask: returns a binary mask which,  
+                if act_full = True, return the dilation mask
+                if act_fall = False, return the narrow band
+        '''
+        thres = self.thres
+        N,C,H,W,L = pred.shape
+        input = (pred >= thres).float() 
+        # max pooling, dilation
+        maxpool = nn.MaxPool3d(3,1,padding=1)
+        m = torch.zeros(pred.shape) 
+        dilation = maxpool(input)
+        m[:,:,5:H-5,5:W-5,5:L-5] = dilation[:,:,5:H-5,5:W-5,5:L-5]
+        if act_full:
+            return m
+        # else return narrow band 
+        erosion = - maxpool(-input) #erosion
+        m[:,:,5:H-5,5:W-5,5:L-5] = m[:,:,5:H-5,5:W-5,5:L-5]-erosion[:,:,5:H-5,5:W-5,5:L-5]
+        return m #TODO we can return erosion or dilation seperatly, to handle curvature at different regions
+
+
+    def curvature(self, phi):
+        """ Computes divergence of vector field
+        phi: input signed distance function / Gaussian smoothed function
+        returns:
+            curvature
+        """
+        grad_x, grad_y, grad_z = torch.gradient(phi,dim=(2,3,4))
+        grad_mag = torch.sqrt(grad_x**2 + grad_y**2 + grad_z**2)+1e-6
+        curvature = (torch.gradient(grad_x/grad_mag, dim=2)[0] + torch.gradient(grad_y/grad_mag, dim=3)[0] + torch.gradient(grad_z/grad_mag, dim=4)[0]) 
+        return curvature # ignore this for now /2
+
+    def total_variation_loss(self, batched_volume):
+        '''
+        Total variation loss with mean reduction
+        '''
+        N,C,H,W,L = batched_volume.shape
+        diff1 = torch.abs(batched_volume[..., 1:, :] - batched_volume[..., :-1, :]).sum()
+        diff2 = torch.abs(batched_volume[..., 1:] - batched_volume[..., :-1]).sum()
+        diff3 = torch.abs(batched_volume[..., 1:,:,:] - batched_volume[...,:-1,:,:]).sum()
+        score = diff1 + diff2 + diff3 
+        return score/(N*C*H*W*L)
+    
+    def forward(self, pred , act_full=True):
+        '''
+        Args:
+        - pred: (N,C,H,W,L) probablistic prediction   
+        - act_full, bool, includes narrow band on surface (F) or all values > thres (T)
+        Returns:
+        - Curvature, loss with mean reduction, divided by total count of nonzero elements
+        '''
+        kernel = self.gaussian_kernel.to(pred.device)
+        mask = self.get_mask(pred, act_full=act_full).to(pred.device) #Do not act soft from the first place
+        phi = F.conv3d(pred, kernel, padding=self.kernal_size // 2)
+        k = self.curvature(phi).to(pred.device) 
+        if mask is not None:
+            k *= mask
+        if self.mode == 'tv':
+            loss = self.total_variation_loss(k)
+        elif self.mode == 'mean':
+            loss = k.abs().mean()
+        return loss
 
 
 class ForegroundDTConsistency(nn.Module):    
@@ -155,3 +266,16 @@ class NonoverlapReg(nn.Module):
             loss = loss * torch.sigmoid(pred[:, 2].detach())
 
         return loss.mean()
+
+if __name__ == '__main__':
+    #test curvature consistency 
+    rand_tensor = torch.randn(3,1,25,25,25)
+    reg = CurvatureReg(mode='tv')
+    loss = reg(rand_tensor)
+    print(loss)
+    reg.mode = 'mean'
+    print(reg(rand_tensor))
+
+    #verify the run check 
+    # dumbell shape
+    #wanna ask Arnab how to design an experiment!! 

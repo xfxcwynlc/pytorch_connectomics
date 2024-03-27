@@ -223,11 +223,14 @@ class VolumeDataset(torch.utils.data.Dataset):
 
     def _get_pos_train(self, vol_size):
         # random: multithread
+        # 1. did = randomly select a image sample from the total subvolume list
+        # 2. get the size of volume at id: 'did'
+        # 3. divide by the stride on the size to get subsamples index coordiantes 
         # np.random: same seed
-        pos = [0, 0, 0, 0]
+        pos = [0, 0, 0, 0] # The order is: (z,y,x)
         # pick a dataset
         did = self._index_to_dataset(random.randint(0, self.sample_num_a-1))
-        pos[0] = did
+        pos[0] = did # sample id. For example 10 subvolumes in the folder, did will be in [0,9]
         # pick a position
         tmp_size = count_volume(
             self.volume_size[did], vol_size, self.sample_stride)
@@ -248,7 +251,7 @@ class VolumeDataset(torch.utils.data.Dataset):
         while True:
             sample = self._random_sampling(vol_size)
             pos, out_volume, out_label, out_valid = sample
-            if out_volume.shape[1]!=vol_size[1] or out_volume.shape[2]!=vol_size[2]:
+            if not np.all(out_volume.shape==vol_size):
                 #TODO adjust output volume valid shape 
                 sample_count += 1
                 continue
@@ -262,7 +265,6 @@ class VolumeDataset(torch.utils.data.Dataset):
                 data = {'image': out_volume,
                         'label': out_label,
                         'valid_mask': out_valid}
-
                 augmented = self.augmentor(data)
                 out_volume, out_label = augmented['image'], augmented['label']
                 out_valid = augmented['valid_mask']

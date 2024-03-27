@@ -44,6 +44,7 @@ class Criterion(object):
         'ContourDT': ContourDTConsistency,
         'FgDT': ForegroundDTConsistency,
         'Nonoverlap': NonoverlapReg,
+        'Curvature': CurvatureReg
     }
 
     def __init__(self,
