@@ -44,7 +44,10 @@ class Criterion(object):
         'ContourDT': ContourDTConsistency,
         'FgDT': ForegroundDTConsistency,
         'Nonoverlap': NonoverlapReg,
-        'Curvature': CurvatureReg
+        'Curvature_min': CurvatureReg,
+        'Curvature_mean': CurvatureReg,
+        'Curvature_percentage': CurvatureReg
+
     }
 
     def __init__(self,
@@ -84,7 +87,15 @@ class Criterion(object):
             regu = [None]*len(regu_opt)
             for i, ropt in enumerate(regu_opt):
                 assert ropt in self.regu_dict
-                regu[i] = self.regu_dict[ropt]()  # custom options are not yet supported
+                if ropt == 'Curvature_min':
+                    regu[i] = self.regu_dict[ropt](variant='min')
+                elif ropt == 'Curvature_mean':
+                    regu[i] = self.regu_dict[ropt](variant='sum')
+                elif ropt == 'Curvature_percentage':
+                    regu[i] = self.regu_dict[ropt](variant='percentage')
+                else:
+                    regu[i] = self.regu_dict[ropt]()  # custom options are not yet supported
+
         return regu
 
     def get_loss(self, loss_opt, loss_kwargs=None):

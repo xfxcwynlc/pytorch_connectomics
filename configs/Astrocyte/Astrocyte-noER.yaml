@@ -27,19 +27,20 @@ AUGMENTOR:
   # ROTATE:
   #   ENABLED: False
 DATASET:
-  OUTPUT_PATH: outputs/Astrocytes/WT/all
+  OUTPUT_PATH: outputs/Astrocytes/WT/noER
   IS_ABSOLUTE_PATH: True
   IMAGE_NAME: datasets/Astrocytes/WT_cropped_1500/raw/path.txt
-  LABEL_NAME: datasets/Astrocytes/WT_cropped_1500/mask/path.txt
+  LABEL_NAME: datasets/Astrocytes/WT_cropped_1500/mask_noER/path.txt
   DISTRIBUTED: False
   ENSURE_MIN_SIZE: True
   DO_2D: True
   LOAD_2D: True
   NORMALIZE_RANGE: True
   PAD_SIZE: [0, 0, 0]
+  #DATA_COORD_RANGE: [[0, 600, 190, 1500, 900, 2503]]
   REJECT_SAMPLING:
     SIZE_THRES: 100
-    P: 0.9 # IS IT IF LESS THAN SIZE_THRESHOLD, REJECT WITH 0.9 probability?? 
+    P: 0.9
   # DO_CHUNK_TITLE: 1
   # DATA_CHUNK_NUM: [4, 8, 8]
 MODEL:
@@ -72,7 +73,7 @@ INFERENCE:
   OUTPUT_ACT: ["sigmoid"]
   IS_ABSOLUTE_PATH: True
   IMAGE_NAME: datasets/Astrocytes/2/test/raw/path.txt
-  OUTPUT_PATH: outputs/Astrocytes/WT/all/test_2
+  OUTPUT_PATH: outputs/Astrocytes/WT/noER/test_2
   #PAD_SIZE: [8, 28, 28]
   AUG_MODE: mean
   AUG_NUM: 16

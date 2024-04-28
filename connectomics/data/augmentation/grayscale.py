@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import random
 from typing import Optional
 
 import numpy as np
@@ -22,11 +23,11 @@ class Grayscale(DataAugment):
 
     def __init__(self,
                  contrast_factor: float = 0.3,
-                 brightness_factor: float = 0.3,
+                 brightness_factor: float = 0.9,
                  mode: str = 'mix',
                  invert: bool = False,
                  invert_p: float = 0.0,
-                 p: float = 0.5,
+                 p: float = 0.6,
                  additional_targets: Optional[dict] = None,
                  skip_targets: list = []):
 
@@ -74,7 +75,9 @@ class Grayscale(DataAugment):
         for z in range(transformedimgs.shape[-3]):
             img = transformedimgs[z, :, :]
             img *= 1 + (ran[z*3] - 0.5)*self.CONTRAST_FACTOR
-            img += (ran[z*3+1] - 0.5)*self.BRIGHTNESS_FACTOR
+            #bf = random.uniform(0,self.BRIGHTNESS_FACTOR)
+            img += (ran[z*3+1] - 0.5)*self.BRIGHTNESS_FACTOR #TODO Random float for brightness factor. 
+
             img = np.clip(img, 0, 1)
             img **= 2.0**(ran[z*3+2]*2 - 1)
             transformedimgs[z, :, :] = img
@@ -89,9 +92,11 @@ class Grayscale(DataAugment):
         """
         transformedimgs = np.copy(imgs)
         transformedimgs *= 1 + (ran[0] - 0.5)*self.CONTRAST_FACTOR
+        #bf = random.uniform(0,self.BRIGHTNESS_FACTOR)
         transformedimgs += (ran[1] - 0.5)*self.BRIGHTNESS_FACTOR
         transformedimgs = np.clip(transformedimgs, 0, 1)
         transformedimgs **= 2.0**(ran[2]*2 - 1)
+        #TODO: adjusting intensities might give negative values! 
 
         if do_invert:
             return self._invert(transformedimgs)

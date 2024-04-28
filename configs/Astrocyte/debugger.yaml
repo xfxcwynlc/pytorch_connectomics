@@ -1,0 +1,84 @@
+SYSTEM:
+  NUM_GPUS: 2
+  NUM_CPUS: 4
+AUGMENTOR:
+  ENABLED: True
+  SMOOTH: False # Are others by default set to True? or no preprocessing
+  ELASTIC:
+    ENABLED: True
+  RESCALE:
+    ENABLED: True
+    P: 0.5
+  FLIP:
+    ENABLED: True
+  GRAYSCALE:
+    ENABLED: True
+  ROTATE:
+    ENABLED: True
+    ROT90: True
+DATASET:
+  DATA_SCALE: [1.,0.5,0.5] #(z,y,x)
+  OUTPUT_PATH: outputs/debug
+  VAS_LOGGER_ABS_PATH: /Users/yananw/research/Models/connectomics/outputs/val
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME: 
+    - datasets/debug/raw.tif
+    - datasets/debug/raw.tif
+  LABEL_NAME: 
+    - datasets/debug/mask.tif
+    - datasets/debug/mask.tif
+  VAL_IMAGE_NAME: datasets/debug/raw.tif
+  VAL_LABEL_NAME: datasets/debug/mask.tif
+  DISTRIBUTED: False
+  ENSURE_MIN_SIZE: True
+  #DO_2D: True
+  #LOAD_2D: True #THIS DOES NOT MAKE IT 3D. JUST DUPLICATE 1 CHANNEL
+  NORMALIZE_RANGE: True
+  PAD_SIZE: [0, 0, 0]
+  REJECT_SAMPLING:
+    SIZE_THRES: 30000
+    P: 0.6
+  # DO_CHUNK_TITLE: 1
+  # DATA_CHUNK_NUM: [4, 8, 8]
+MODEL:
+  ARCHITECTURE: unet_3d
+  BLOCK_TYPE: residual_se
+  INPUT_SIZE: [16,128,128]   #[5, 512, 512] (z,y,x)
+  OUTPUT_SIZE: [16,128,128]    #[5, 512, 512]
+  IN_PLANES: 1
+  OUT_PLANES: 1
+  LOSS_OPTION: [["WeightedBCEWithLogitsLoss", "DiceLoss"]]
+  LOSS_WEIGHT: [[1.0, 0.5]]
+  OUTPUT_ACT: [["none", "sigmoid"]]
+  WEIGHT_OPT: [['1', '0']]
+  NORM_MODE: in #what is in stands for? 
+  # cross-target consistency regularization
+  # REGU_OPT: ["Curvature_percentage"]
+  # REGU_TARGET: [[0]] #[[0]] means, takes the first output for the first regularizer 
+  # REGU_WEIGHT: [0.5]
+
+ #TARGET_OPT: ["0"]
+ #WEIGHT_OPT: [["1", "0"]]
+ #FILTERS: [32, 64, 128, 256, 512] Number of channels in the UNET
+SOLVER:
+  LR_SCHEDULER_NAME: WarmupCosineLR
+  BASE_LR: 0.04
+  ITERATION_STEP: 1
+  ITERATION_VAL: 20
+  ITERATION_SAVE: 300
+  ITERATION_TOTAL: 80
+  SAMPLES_PER_BATCH: 4
+# MONITOR:
+#   ITERATION_NUM: [50, 100]
+INFERENCE: 
+  INPUT_SIZE: [64,64,64]
+  OUTPUT_SIZE: [64,64,64]
+  OUTPUT_ACT: ["sigmoid"]
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME: datasets/debug/raw.tif
+  OUTPUT_PATH: outputs/debug/test
+  #PAD_SIZE: [8, 28, 28]
+  AUG_MODE: mean
+  AUG_NUM: None
+  STRIDE: [8, 512,512]
+  SAMPLES_PER_BATCH: 4

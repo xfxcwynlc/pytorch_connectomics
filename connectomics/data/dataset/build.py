@@ -261,7 +261,7 @@ def get_dataset(cfg,
     if mode == 'train':
         sample_volume_size = augmentor.sample_size if augmentor is not None else cfg.MODEL.INPUT_SIZE
         sample_label_size = sample_volume_size
-        sample_stride = (1, 64, 64)
+        sample_stride = (15, 128, 128) #TODO Change the training stride
         topt, wopt = cfg.MODEL.TARGET_OPT, cfg.MODEL.WEIGHT_OPT
         iter_num = cfg.SOLVER.ITERATION_TOTAL * cfg.SOLVER.SAMPLES_PER_BATCH
         if cfg.SOLVER.SWA.ENABLED:

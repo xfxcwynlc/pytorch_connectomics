@@ -142,10 +142,10 @@ class Visualizer(object):
             weight_visual.append(maybe2rgb(weight_maps[key]).detach().cpu().expand(
                                  sz[0], 3, sz[2], sz[3]))
 
-        canvas = canvas + output_visual + label_visual + weight_visual
+        canvas = canvas + output_visual + label_visual #+ weight_visual #TODO remove the weight visual for now. Just raw, output, label
         canvas_merge = torch.cat(canvas, 0)
         canvas_show = vutils.make_grid(
-            canvas_merge, nrow=8, normalize=True, scale_each=True)
+            canvas_merge, nrow=8, normalize=True, scale_each=True) #nrow = 6
 
         writer.add_image('Consecutive_%s' % vis_name, canvas_show, iteration)
 

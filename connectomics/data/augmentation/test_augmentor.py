@@ -109,7 +109,7 @@ class TestAugmentor(object):
                 vout = self.inference_act(
                     _forward(model, volume)).detach().cpu()
             else:
-                vout = model(_forward(model, volume)).detach().cpu()
+                vout = model(_forward(model, volume)).detach().cpu() #todo: why model(model())
 
             if transpose:  # swap x-/y-axis
                 vout = torch.transpose(vout, 3, 4)

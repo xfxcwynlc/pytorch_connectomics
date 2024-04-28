@@ -25,8 +25,7 @@ def blend_gaussian(sz: Union[Tuple[int], List[int]],
                              np.linspace(-1,1,sz[1], dtype=np.float32),
                              np.linspace(-1,1,sz[2], dtype=np.float32), 
                              indexing='ij')
-
-    dd = np.sqrt(zz*zz + yy*yy + xx*xx)
+    dd = np.sqrt(zz*zz + yy*yy + xx*xx)  #TODO blending takes the patch and assume std Gaussian (like uniform sphere weighting)
     ww = 1e-4 + np.exp(-( (dd-mu)**2 / ( 2.0 * sigma**2 )))
     return ww.astype(np.float32)
 

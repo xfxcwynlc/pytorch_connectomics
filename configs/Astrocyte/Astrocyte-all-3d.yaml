@@ -1,0 +1,59 @@
+SYSTEM:
+  NUM_GPUS: 1
+  NUM_CPUS: 4
+AUGMENTOR:
+  ENABLED: False
+  
+DATASET:
+  OUTPUT_PATH: outputs/Astrocytes/WT/all_3d
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME: datasets/WT_cropped_1500/raw/path.txt
+  LABEL_NAME: datasets/WT_cropped_1500/mask/path.txt
+  DISTRIBUTED: False
+  ENSURE_MIN_SIZE: True
+  #DO_2D: True
+  LOAD_2D: True
+  NORMALIZE_RANGE: True
+  PAD_SIZE: [0, 0, 0]
+  REJECT_SAMPLING:
+    SIZE_THRES: 200
+    P: 0.5
+  # DO_CHUNK_TITLE: 1
+  # DATA_CHUNK_NUM: [4, 8, 8]
+MODEL:
+  ARCHITECTURE: unet_3d
+  BLOCK_TYPE: residual_se
+  INPUT_SIZE: [8, 256, 256]
+  OUTPUT_SIZE: [8, 256, 256]
+  IN_PLANES: 1
+  OUT_PLANES: 1
+  LOSS_OPTION: [["DiceLoss"]]
+  OUTPUT_ACT: [["sigmoid"]]
+  LOSS_WEIGHT: [[1.0]]
+  WEIGHT_OPT: [['1']]
+  NORM_MODE: in #what is in stands for? 
+ #TARGET_OPT: ["0"]
+ #WEIGHT_OPT: [["1", "0"]]
+ #FILTERS: [32, 64, 128, 256, 512] Number of channels in the UNET
+SOLVER:
+  LR_SCHEDULER_NAME: WarmupCosineLR
+  BASE_LR: 0.04
+  ITERATION_STEP: 1
+  ITERATION_SAVE: 2000
+  ITERATION_TOTAL: 40000
+  SAMPLES_PER_BATCH: 16
+# MONITOR:
+#   ITERATION_NUM: [50, 100]
+INFERENCE:
+  INPUT_SIZE: [8, 256, 256]
+  OUTPUT_SIZE: [8, 256, 256]
+  OUTPUT_ACT: ["sigmoid"]
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME: datasets/WT_cropped_1500/test/raw/path.txt
+  OUTPUT_PATH: outputs/Astrocytes/WT/all_3d/test
+  #PAD_SIZE: [8, 28, 28]
+  AUG_MODE: mean
+  AUG_NUM: 16
+  STRIDE: [1, 64, 64]
+  SAMPLES_PER_BATCH: 4
+  DO_SINGLY: True

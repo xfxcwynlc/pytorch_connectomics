@@ -23,7 +23,7 @@ class Rescale(DataAugment):
     def __init__(self,
                  low: float = 0.8,
                  high: float = 1.25,
-                 fix_aspect: bool = False,
+                 fix_aspect: bool = True,
                  p: float = 0.5,
                  additional_targets: Optional[dict] = None,
                  skip_targets: list = []):

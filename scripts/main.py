@@ -37,7 +37,7 @@ def main():
 
     print("Rank: {}. Device: {}. Process is finished!".format(
           args.local_rank, device))
-
+    
 
 if __name__ == "__main__":
     main()

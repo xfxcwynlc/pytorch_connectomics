@@ -1,8 +1,9 @@
+import os
 import numpy as np
 import scipy.sparse as sparse
 import h5py
 from scipy import ndimage
-
+import tifffile
 __all__ = [
     'get_binary_jaccard',
 ]
@@ -37,14 +38,16 @@ def adapted_rand(seg, gt, all_stats=False):
     References
     ----------
     [1]: http://brainiac2.mit.edu/SNEMI3D/evaluation
+    I think that;s how they compute for the 
+    https://stackoverflow.com/questions/37411370/computing-rand-error-efficiently
     """
     # segA is truth, segB is query
-    segA = np.ravel(gt)
-    segB = np.ravel(seg)
-    n = segA.size
+    segA = np.ravel(gt) #unrolls to 1D array 
+    segB = np.ravel(seg) #unrolls to 1D array ``
+    n = segA.size #shape of the array 
 
-    n_labels_A = np.amax(segA) + 1
-    n_labels_B = np.amax(segB) + 1
+    n_labels_A = np.amax(segA) + 1 # maximum of an array + 1 to account for the new label
+    n_labels_B = np.amax(segB) + 1 # maximum of an array + 1 to account for the new label
 
     ones_data = np.ones(n, int)
 
@@ -234,7 +237,7 @@ def contingency_table(seg, gt, ignore_seg=[0], ignore_gt=[0], norm=True):
     """
     segr = seg.ravel()
     gtr = gt.ravel()
-    ignored = np.zeros(segr.shape, np.bool)
+    ignored = np.zeros(segr.shape).astype(bool)
     data = np.ones(len(gtr))
     for i in ignore_seg:
         ignored[segr == i] = True
@@ -478,3 +481,90 @@ def cremi_distance(pred, gt, resolution=(40.0, 4.0, 4.0)):
     print("\tdistance to proposal    : " + str(false_negative_stats))
 
     return false_positive_stats['mean'], false_negative_stats['mean']
+
+def min_max(vol):
+    '''
+    Min max normalization for volume
+
+    Parameters
+    --
+    - vol: takes in volume for normalization
+    
+    Returns
+    --
+    - vol: after normalization
+    '''
+
+    return (vol - vol.min())/(vol.max()-vol.min())
+
+
+def evaluations(prediction_folder, gt_path, metric='confusion', threshold = [0.5, 0.8, 0.9]):
+    '''
+    Taken a folder path where a list of volumes is within the path, evaluate (based on the metric) 
+    of each volume w.r.t. the groundtruth.
+
+    Parameters
+    ----
+    - prediction_folder: str, path to the prediction folder, that contains a list of volumes
+    - gt_path: str, path to the groundtruth volume
+    - metric: str, ('confusion', 'jac', 'adapted_rand', 'voi')
+    - threshold: opt, list of threshold 
+
+    Returns
+    ----
+    - {n1:score1,n2:score2,...}: dictionary, of shape scores x N x M, where N is the number of volumes within the folder, M is the 
+    different threshold we want to evaluate. 
+    '''
+
+    assert metric in ('confusion', 'jac', 'adapted_rand', 'voi')
+    vol_dict = {}
+    gt = tifffile.imread(gt_path)
+    for f in os.listdir(prediction_folder):
+        if not f.endswith('tif'): continue
+        path = os.path.join(prediction_folder,f)
+        v = tifffile.imread(path)
+        k = f.replace('.tif','')
+        vol_dict[k] = v
+
+    score_D = {}
+    for k,v in vol_dict.items():
+        if metric == 'confusion':
+            if gt.max()>1:
+                gt = min_max(gt)
+            if v.max()>1:
+                v = min_max(v)
+            for thres in threshold:
+                score_D[str(thres)] = score_D.get(str(thres),{}) 
+                score_D[str(thres)][k] = confusion_matrix(v,gt,thres) # (TP, FP, TN, FN)
+        elif metric == 'jac':
+            if gt.max()>1:
+                gt = min_max(gt)
+            if v.max()>1:
+                v = min_max(v)
+            score_arr = get_binary_jaccard(v,gt,thres=threshold)
+            for i,thres in enumerate(threshold):
+                score_D[str(thres)] = score_D.get(str(thres),{}) 
+                score_D[str(thres)][k] = score_arr[i]
+        elif metric == 'adapted_rand':
+            assert v.dtype == np.uint8 and gt.dtype == np.uint8
+            score_D[k] = adapted_rand(v,gt,all_stats=True)
+        elif metric == 'voi':
+            assert v.dtype == np.uint8 and gt.dtype == np.uint8
+            score_D[k] = voi(v,gt)
+
+    return score_D
+
+
+if __name__ == '__main__':
+    folder_path = "/Users/yananw/Downloads/stridetest/"
+    gt_path = "/Users/yananw/Downloads/stridetest/4x64x64.tif"
+    D1 = evaluations(folder_path,gt_path,metric='confusion')  #(TP, FP, TN, FN) 
+    D2 = evaluations(folder_path,gt_path,metric='jac') # (foreground IoU, IoU, precision and recall)
+    D3 = evaluations(folder_path,gt_path,metric='adapted_rand') #(err, adapted precision, adapted recall)
+    D4 = evaluations(folder_path,gt_path,metric='voi') #(split, merge)
+
+    print(D1,D2)
+    
+    
+
+    

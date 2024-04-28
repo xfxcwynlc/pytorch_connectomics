@@ -54,7 +54,7 @@ def build_train_augmentor(cfg: CfgNode, keep_uncropped: bool = False, keep_non_s
     rescale_aug = cfg.AUGMENTOR.RESCALE
     if rescale_aug.ENABLED:
         aug_list.append(
-            Rescale(p=rescale_aug.P, fix_aspect=rescale_aug.FIX_ASPECT,
+            Rescale(high=2,p=rescale_aug.P, fix_aspect=rescale_aug.FIX_ASPECT,
                     additional_targets=additional_targets,
                     skip_targets=rescale_aug.SKIP))
 
@@ -80,7 +80,8 @@ def build_train_augmentor(cfg: CfgNode, keep_uncropped: bool = False, keep_non_s
     grayscale_aug = cfg.AUGMENTOR.GRAYSCALE
     if grayscale_aug.ENABLED:
         aug_list.append(
-            Grayscale(p=grayscale_aug.P,
+            Grayscale(contrast_factor=0,
+                      p=grayscale_aug.P,
                       additional_targets=additional_targets,
                       skip_targets=grayscale_aug.SKIP))
 

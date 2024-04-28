@@ -84,7 +84,7 @@ def init_devices(args, cfg):
             else args.manual_seed
     else:
         manual_seed = 0 if args.manual_seed is None else args.manual_seed
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        device = torch.device("cpu" if torch.backends.mps.is_available() else "mps") #todo change to cpu for 3D
 
     print("rank: {}, device: {}, seed: {}".format(args.local_rank, device, manual_seed))
     # use manual_seed seeds for reproducibility

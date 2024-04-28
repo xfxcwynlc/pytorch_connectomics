@@ -31,14 +31,16 @@ def build_monitor(cfg):
 
 
 class Logger(object):
-    def __init__(self, log_path='', log_opt=[1, 1, 0], batch_size=1):
+    def __init__(self, log_path='', log_opt=[1, 1, 0], batch_size=1, vas_logger_path='/Users/yananw/research/Models/connectomics/outputs/val'):
         self.n = batch_size
         self.reset()
         # tensorboard visualization
         self.log_tb = None
+        self.log_val = None
         self.do_print = log_opt[0] == 1
         if log_opt[1] > 0:
             self.log_tb = SummaryWriter(log_path)
+            self.log_val = SummaryWriter(os.path.join(vas_logger_path,log_path.split('/')[-1]))
         # txt
         self.log_txt = None
         if log_opt[2] > 0:
@@ -89,7 +91,10 @@ class Monitor(object):
     """Computes and stores the average and current value"""
 
     def __init__(self, cfg, log_path='', log_opt=[1, 1, 0, 1], vis_opt=[0, 16], iter_num=[10, 100]):
-        self.logger = Logger(log_path, log_opt[:3], log_opt[3])
+        if cfg.DATASET.VAS_LOGGER_ABS_PATH: 
+            self.logger = Logger(log_path, log_opt[:3], log_opt[3], cfg.DATASET.VAS_LOGGER_ABS_PATH)
+        else:
+            self.logger = Logger(log_path, log_opt[:3], log_opt[3])
         self.vis = Visualizer(cfg, vis_opt[0], vis_opt[1])
         self.log_iter, self.vis_iter = iter_num
         self.do_vis = False if self.logger.log_tb is None else True

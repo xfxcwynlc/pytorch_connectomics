@@ -190,7 +190,7 @@ _C.DATASET = CN()
 # Scale ratio of the input data for different resolutions.
 # Using a DATA_SCALE of [1., 0.5, 0.5] will downsample the
 # original image by two times (e.g., 4nm -> 8nm).
-_C.DATASET.DATA_SCALE = [1., 1., 1.]
+_C.DATASET.DATA_SCALE = [1., 1.,1.]
 _C.DATASET.IMAGE_SCALE = None
 _C.DATASET.LABEL_SCALE = None
 _C.DATASET.VALID_MASK_SCALE = None
@@ -211,6 +211,7 @@ _C.DATASET.VAL_PAD_SIZE = [0, 0, 0]
 _C.DATASET.LABEL_VAST = False
 _C.DATASET.INPUT_PATH = 'path/to/input'
 _C.DATASET.OUTPUT_PATH = 'path/to/output'
+_C.DATASET.VAS_LOGGER_ABS_PATH = None
 _C.DATASET.IS_ABSOLUTE_PATH = False
 
 # Specify whether the data is isotropic or not.
@@ -233,7 +234,7 @@ _C.DATASET.PAD_MODE = 'reflect'  # reflect, constant, symmetric
 # Upsample the input to at least the required sample size. If data 
 # augmentor is used, the min_size is augmentor.sample_size, else is
 # MODEL.INPUT_SIZE.
-_C.DATASET.ENSURE_MIN_SIZE = True
+_C.DATASET.ENSURE_MIN_SIZE = True #make sure the cropped image is at least your specified size, with no padding or augmentors
 
 # Normalize the image and cast to uint8 format
 _C.DATASET.NORMALIZE_RANGE = True
@@ -304,23 +305,23 @@ _C.AUGMENTOR.ADDITIONAL_TARGETS_TYPE = ['mask']
 # key to skip for that augmentation
 _C.AUGMENTOR.ROTATE = CN({"ENABLED": False})
 _C.AUGMENTOR.ROTATE.ROT90 = True
-_C.AUGMENTOR.ROTATE.P = 1.0
+_C.AUGMENTOR.ROTATE.P = 0.7
 _C.AUGMENTOR.ROTATE.SKIP = []
 
 _C.AUGMENTOR.RESCALE = CN({"ENABLED": False})
-_C.AUGMENTOR.RESCALE.FIX_ASPECT = False
-_C.AUGMENTOR.RESCALE.P = 0.5
+_C.AUGMENTOR.RESCALE.FIX_ASPECT = True
+_C.AUGMENTOR.RESCALE.P = 0.7
 _C.AUGMENTOR.RESCALE.SKIP = []
 
 _C.AUGMENTOR.FLIP = CN({"ENABLED": False})
-_C.AUGMENTOR.FLIP.P = 1.0
+_C.AUGMENTOR.FLIP.P = 0.7
 # Conducting x-z and y-z flip only when the dataset is isotropic
 # and the input is cubic.
 _C.AUGMENTOR.FLIP.DO_ZTRANS = 0
 _C.AUGMENTOR.FLIP.SKIP = []
 
 _C.AUGMENTOR.ELASTIC = CN({"ENABLED": False})
-_C.AUGMENTOR.ELASTIC.P = 0.75
+_C.AUGMENTOR.ELASTIC.P = 0.7
 # Maximum pixel-moving distance of elastic transformation
 _C.AUGMENTOR.ELASTIC.ALPHA = 16.0
 # Standard deviation of the Gaussian filter

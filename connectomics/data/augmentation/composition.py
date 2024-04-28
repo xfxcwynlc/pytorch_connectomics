@@ -2,7 +2,7 @@ from __future__ import print_function, division
 from typing import Optional
 import numpy as np
 from skimage.filters import gaussian
-
+import tifffile
 class Compose(object):
     r"""Composing a list of data transforms.
 
@@ -122,6 +122,7 @@ class Compose(object):
         # we need to be careful when using numpy.random in multiprocess application as it can always generate the
         # same output for different processes. Therefore we use np.random.RandomState().
         sample['image'] = sample['image'].astype(np.float32)
+
         for name in self.additional_targets.keys():
             if self.additional_targets[name] == 'img':
                 sample[name] = sample[name].astype(np.float32)
@@ -130,6 +131,7 @@ class Compose(object):
         for tid, t in enumerate(reversed(self.transforms)):
             if ran[tid] < t.p:
                 sample = t(sample, random_state)
+            #    tifffile.imwrite(f"/Users/yananw/Desktop/transformation/{t}.tif",sample['image'],photometric='minisblack')
 
         # crop the data to the specified input size
         existing_keys = ['image'] + list(self.additional_targets.keys())
@@ -142,6 +144,7 @@ class Compose(object):
         # flip augmentation
         if self.flip_aug is not None and random_state.rand() < self.flip_aug.p:
             sample = self.flip_aug(sample, random_state)
+            #tifffile.imwrite(f"/Users/yananw/Desktop/transformation/flip.tif",sample['image'],photometric='minisblack')
 
         # smooth mask contour
         if self.smooth:

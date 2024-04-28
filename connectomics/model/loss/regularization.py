@@ -35,20 +35,27 @@ class CurvatureReg(nn.Module):
         pred (torch.Tensor): foreground logits.
         sigma (int): sigma to smooth the surface
     '''
-    def __init__(self, thres=0.1, sigma=5,kernel_size=9,mode='tv') -> None:
+    def __init__(self, thres=0.1, sigma=5,kernel_size=9,mode='tv',variant='min') -> None:
         '''
         Args:
         - thres, threshold to binarize prediction logits, default 0.1
         - sigma, Standard deviation of the Gaussian.
         - kernel_size, int, odd number for kernel size in Gaussian
-        - mode, str, 'tv' for total variation, 'mean' for mean
+        - mode, str, 'tv' for total variation, 
+                    'mean' for mean
+        - variant, str, mode for total variation, 
+                    'min' for min(diff1,diff2,diff3).sum(), 
+                    'sum' for sum(diff1,diff2,diff3).sum()
+                    'percentage' for (diff1 + diff2 + diff3)/ max(diff1,diff2,diff3,1)
         '''
         super().__init__()
         assert mode in ['tv','mean']
+        assert variant in ['min', 'sum', 'percentage']
         self.thres = thres
         self.sigma = sigma 
         self.kernal_size = kernel_size
         self.mode = mode
+        self.variant = variant
         self.gaussian_kernel = self.gaussian_3d(self.kernal_size).unsqueeze(0).unsqueeze(0)
     
     def gaussian_3d(self, kernel_size=9):
@@ -108,14 +115,30 @@ class CurvatureReg(nn.Module):
 
     def total_variation_loss(self, batched_volume):
         '''
-        Total variation loss with mean reduction
+        Total variation loss with mean reduction [-1,0,1 ]
         '''
+        #[-1,0,1 ] #phi = F.conv2d(pred, kernel, padding=self.kernal_size // 2)
+        
         N,C,H,W,L = batched_volume.shape
-        diff1 = torch.abs(batched_volume[..., 1:, :] - batched_volume[..., :-1, :]).sum()
-        diff2 = torch.abs(batched_volume[..., 1:] - batched_volume[..., :-1]).sum()
-        diff3 = torch.abs(batched_volume[..., 1:,:,:] - batched_volume[...,:-1,:,:]).sum()
-        score = diff1 + diff2 + diff3 
-        return score/(N*C*H*W*L)
+
+        kernel = torch.tensor([-1, 0, 1], dtype=batched_volume.dtype, device=batched_volume.device)
+        kernel_x = kernel.view(1,1,1,1,3)
+        kernel_y = kernel.view(1,1,1,3,1)
+        kernel_z = kernel.view(1,1,3,1,1)
+
+        diff1  = torch.abs(F.conv3d(batched_volume, kernel_x ,padding=(0,0,1)))
+        diff2  = torch.abs(F.conv3d(batched_volume, kernel_y ,padding=(0,1,0)))
+        diff3  = torch.abs(F.conv3d(batched_volume, kernel_z ,padding=(1,0,0)))
+        assert diff1.shape == batched_volume.shape and diff2.shape == batched_volume.shape and diff3.shape == batched_volume.shape
+        if self.variant == 'min':
+            score = torch.minimum(torch.minimum(diff1, diff2), diff3) 
+        elif self.variant == 'sum':
+            score = (diff1 + diff2 + diff3)
+        elif self.variant == 'percentage':
+            max_elements = torch.maximum(torch.maximum(diff1,diff2),diff3)
+            max_elements = torch.where(max_elements<1e-6, 1e-6, max_elements) # 1e-6 avoid zero division
+            score = (diff1 + diff2 + diff3)/max_elements 
+        return score
     
     def forward(self, pred , act_full=True):
         '''
@@ -129,13 +152,16 @@ class CurvatureReg(nn.Module):
         mask = self.get_mask(pred, act_full=act_full).to(pred.device) #Do not act soft from the first place
         phi = F.conv3d(pred, kernel, padding=self.kernal_size // 2)
         k = self.curvature(phi).to(pred.device) 
-        if mask is not None:
-            k *= mask
+        
+        #Not reduced yet
         if self.mode == 'tv':
             loss = self.total_variation_loss(k)
-        elif self.mode == 'mean':
-            loss = k.abs().mean()
-        return loss
+        else: #if just 'mean'
+            loss = k.abs()
+
+        if mask is not None:
+            loss *= mask
+        return loss.mean()
 
 
 class ForegroundDTConsistency(nn.Module):    
@@ -270,11 +296,16 @@ class NonoverlapReg(nn.Module):
 if __name__ == '__main__':
     #test curvature consistency 
     rand_tensor = torch.randn(3,1,25,25,25)
-    reg = CurvatureReg(mode='tv')
-    loss = reg(rand_tensor)
+    reg1 = CurvatureReg(mode='tv',variant='min')
+    reg2 = CurvatureReg(mode='tv',variant='percentage')
+    reg3 = CurvatureReg(mode='tv',variant='sum')
+
+    loss = reg1(rand_tensor)
     print(loss)
-    reg.mode = 'mean'
-    print(reg(rand_tensor))
+    loss = reg2(rand_tensor)
+    print(loss)
+    loss = reg3(rand_tensor)
+    print(loss)
 
     #verify the run check 
     # dumbell shape

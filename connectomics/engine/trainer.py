@@ -11,15 +11,15 @@ from yacs.config import CfgNode
 
 import torch
 from torch.cuda.amp import autocast, GradScaler
-
 from .base import TrainerBase
+from ..utils.evaluate import get_binary_jaccard,voi
 from .solver import *
 from ..model import *
 from ..utils.monitor import build_monitor
 from ..data.augmentation import build_train_augmentor, TestAugmentor
 from ..data.dataset import build_dataloader, get_dataset
 from ..data.dataset.build import _get_file_list
-from ..data.utils import build_blending_matrix, writeh5
+from ..data.utils import build_blending_matrix, writeh5,writetiff
 from ..data.utils import get_padsize, array_unpad
 
 
@@ -154,30 +154,140 @@ class Trainer(TrainerBase):
         del volume, target, pred, weight, loss, losses_vis
 
     def validate(self, iter_total):
+            r"""Validation function of the trainer class.
+            """
+            if not hasattr(self, 'val_loader'):
+                return
+
+            self.model.eval()
+            with torch.no_grad():
+                val_loss = 0.0
+                for i, sample in enumerate(self.val_loader):
+                    volume = sample.out_input
+                    target, weight = sample.out_target_l, sample.out_weight_l
+
+                    # prediction
+                    volume = volume.to(self.device, non_blocking=True)
+                    with autocast(enabled=self.cfg.MODEL.MIXED_PRECESION):
+                        pred = self.model(volume)
+                        loss, _ = self.criterion(pred, target, weight)
+                        val_loss += loss.data
+
+            if hasattr(self, 'monitor'):
+                self.monitor.logger.log_tb.add_scalar(
+                    'Validation_Loss', val_loss, iter_total)
+                self.monitor.visualize(volume, target, pred,
+                                    weight, iter_total, suffix='Val')
+
+            if not hasattr(self, 'best_val_loss'):
+                self.best_val_loss = val_loss
+
+            if val_loss < self.best_val_loss:
+                self.best_val_loss = val_loss
+                self.save_checkpoint(iter_total, is_best=True)
+
+            # Release some GPU memory and ensure same GPU usage in the consecutive iterations according to
+            # https://discuss.pytorch.org/t/gpu-memory-consumption-increases-while-training/2770
+            del pred, loss, val_loss
+
+            # model.train() only called at the beginning of Trainer.train().
+            self.model.train()
+
+
+    def validate_temp(self, iter_total):
         r"""Validation function of the trainer class.
         """
         if not hasattr(self, 'val_loader'):
             return
 
         self.model.eval()
+
+        output_scale = self.cfg.DATASET.DATA_SCALE
+        jac_score = precision = recall = split = merge = 0 # init variables 
+        output_size = [tuple(x) for x in self.val_loader.dataset.volume_size]# init the output volume
+        
+        spatial_size = self.cfg.MODEL.OUTPUT_SIZE
+            # * np.array(output_scale)).astype(int)) # init spatial size 
+        
+        channel_size = self.cfg.MODEL.OUT_PLANES  # ?? s
+        result = [np.stack([np.zeros(x, dtype=np.float32) for _ in range(channel_size)]) for x in output_size] #TODO currently len(result) == 1 as we only have 1 valiation volume
+        weight_blend = [np.zeros(x, dtype=np.float32) for x in output_size] #
+        gt = [np.stack([np.zeros(x, dtype=np.float16) for _ in range(channel_size)]) for x in output_size] #TODO currently len(result) == 1 as we only have 1 valiation volume
+
+        sz = tuple([channel_size] + spatial_size)
+        ww = np.ones(spatial_size) #build_blending_matrix(spatial_size)
         with torch.no_grad():
             val_loss = 0.0
             for i, sample in enumerate(self.val_loader):
                 volume = sample.out_input
                 target, weight = sample.out_target_l, sample.out_weight_l
-
                 # prediction
                 volume = volume.to(self.device, non_blocking=True)
-                with autocast(enabled=self.cfg.MODEL.MIXED_PRECESION):
+                with autocast(enabled=self.cfg.MODEL.MIXED_PRECESION): # Validation: stride (samplesize[0]//2, samplesize[1]//2, samplesize[2]//2)
                     pred = self.model(volume)
+                    pos = sample.pos
                     loss, _ = self.criterion(pred, target, weight)
                     val_loss += loss.data
+            
+                    for idx in range(pred.shape[0]):
+                        st = pos[idx]
+                        #st = (np.array(st) * np.array([1]+output_scale)).astype(int).tolist()
+                        out_block = pred[idx].numpy()
+                        gt_label = target[0][idx].numpy()
+                        if result[st[0]].ndim - out_block.ndim == 1:  #TODO: Check's 2d model and 3d model's validation
+                            out_block = out_block[:, np.newaxis, :] #
 
-        if hasattr(self, 'monitor'):
-            self.monitor.logger.log_tb.add_scalar(
-                'Validation_Loss', val_loss, iter_total)
-            self.monitor.visualize(volume, target, pred,
-                                   weight, iter_total, suffix='Val')
+                        result[st[0]][:, st[1]:st[1]+sz[1], st[2]:st[2]+sz[2],
+                                    st[3]:st[3]+sz[3]] += out_block * ww[np.newaxis, :]
+                        gt[st[0]][:,st[1]:st[1]+sz[1], st[2]:st[2]+sz[2],
+                                    st[3]:st[3]+sz[3]] += gt_label
+                        weight_blend[st[0]][st[1]:st[1]+sz[1], st[2]:st[2]+sz[2],
+                                    st[3]:st[3]+sz[3]] += ww
+                        
+            for vol_id in range(len(result)):
+                if result[vol_id].ndim > weight_blend[vol_id].ndim:
+                    weight_blend[vol_id] = np.expand_dims(weight_blend[vol_id], axis=0)
+                result[vol_id] /= weight_blend[vol_id]  # in-place to save memory
+                gt[vol_id] /= weight_blend[vol_id]  # Compare for labels. 
+                # result[vol_id] *= 255 # need to open with the ImageJ to see the difference
+                # result[vol_id] = result[vol_id].astype(np.uint8)
+
+            mask_merge_GT = gt[vol_id][0,...].astype(int)
+            thres = [0.5,0.7,0.9]
+            scores = get_binary_jaccard(result[vol_id][0,...],mask_merge_GT,thres=thres)
+            D_iou= {}
+            D_precision= {}
+            D_split= {}
+            D_merge = {}
+            for thres_v in thres:
+                D_iou[str(thres_v)] = {}
+                D_precision[str(thres_v)] = {}
+                D_split[str(thres_v)] = {}
+                
+            for t in range(len(thres)):
+                score = scores[t]
+                print(f"Calculate VOI for threshold {thres[t]}")
+                pred_mask_for_VOI = ((result[vol_id][0,...])> thres[t]).astype(int) #TODO allow VOI  flexible threshold to be more than 0.5
+                split,merge = voi(pred_mask_for_VOI,mask_merge_GT)
+                foreground_iou,precision,recall = score[0],score[-2],score[-1]
+                print(f"Threshold:{thres[t]}  Split: {split}  Merge:{merge}  foreground IoU:{foreground_iou}  precision:{precision}  recall:{recall}")
+                D_iou[str(thres[t])] = foreground_iou
+                D_precision[str(thres[t])] = precision
+                D_split[str(thres[t])] = recall
+                D_merge[str(thres[t])] = merge
+
+            if hasattr(self, 'monitor'):
+                self.monitor.logger.log_val.add_scalars('Foreground IoU', D_iou, iter_total)
+                self.monitor.logger.log_val.add_scalars('Precision', D_precision, iter_total)
+                self.monitor.logger.log_val.add_scalars('Split',D_split, iter_total)
+                self.monitor.logger.log_val.add_scalars('Merge',D_merge, iter_total)
+                self.monitor.logger.log_tb.add_scalar('Validation Loss', val_loss, iter_total) #for loss only
+                self.monitor.logger.log_tb.add_scalar(f'Validation Split thres:{thres[-1]}', D_split[str(thres[-1])], iter_total) #for loss only
+                self.monitor.logger.log_tb.add_scalar(f'Validation Precision thres:{thres[-1]}', D_precision[str(thres[-1])], iter_total) #for loss only
+
+                self.monitor.visualize(volume, target, pred,
+                                    weight, iter_total, suffix='Val') #TODO is this visualization looking at 1 volume or the 1 target? 
+        del result, weight_blend, gt, ww, mask_merge_GT
 
         if not hasattr(self, 'best_val_loss'):
             self.best_val_loss = val_loss
@@ -270,6 +380,8 @@ class Trainer(TrainerBase):
                 print(result[k].shape)
             save_path = os.path.join(self.output_dir, self.test_filename)
             writeh5(save_path, result, ['vol%d' % (x) for x in range(len(result))])
+
+            writetiff(save_path.replace('.h5','.tif'), result[0]) #TODO when validation/test have more than 1 vols, [0] should be changed
             print('Prediction saved as: ', save_path)
 
     def test_singly(self):

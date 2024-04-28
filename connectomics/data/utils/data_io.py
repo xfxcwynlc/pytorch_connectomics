@@ -12,7 +12,7 @@ import glob
 import numpy as np
 import imageio
 from scipy.ndimage import zoom
-
+import tifffile
 
 def readimg_as_vol(filename, drop_channel=False):
     img_suf = filename[filename.rfind('.')+1:]
@@ -68,7 +68,7 @@ def readvol(filename: str, dataset: Optional[str]=None, drop_channel: bool=False
     return data
 
 
-def savevol(filename, vol, dataset='main', format='h5'):
+def savevol(filename, vol, dataset='main', format='tif'):
     if format == 'h5':
         writeh5(filename, vol, dataset='main')
     if format == 'png':
@@ -78,6 +78,8 @@ def savevol(filename, vol, dataset='main', format='h5'):
             os.makedirs(img_save_path)
         for i in range(vol.shape[0]):
             imageio.imsave('%s/%04d.png' % (img_save_path, i), vol[i])
+    if format == 'tif':
+        writetiff(filename, vol)
 
 
 def readim(filename, do_channel=False):
@@ -110,6 +112,10 @@ def readimgs(filename):
 
     return data
 
+
+def writetiff(filename,dtarray):
+    if len(dtarray.shape) == 4:
+        tifffile.imwrite(filename,dtarray,photometric='minisblack')
 
 def writeh5(filename, dtarray, dataset='main'):
     fid = h5py.File(filename, 'w')
