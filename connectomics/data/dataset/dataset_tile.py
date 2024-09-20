@@ -104,7 +104,7 @@ class TileDataset(torch.utils.data.Dataset):
     def get_chunk_ind(self, chunk_ind, split_rule):
         if chunk_ind is None:
             chunk_ind = list(
-                range(np.prod(self.chunk_num)))
+                range(np.prod(self.chunk_num))) #produce indices for all chunks
 
         if split_rule is not None:
             # keep only the chunk indicies for current node/process

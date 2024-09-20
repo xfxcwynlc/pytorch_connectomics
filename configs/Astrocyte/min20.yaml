@@ -1,0 +1,13 @@
+MODEL:
+
+  REGU_OPT: ["Curvature_min"]
+  REGU_TARGET: [[0]] #[[0]] means, takes the first output for the first regularizer 
+  REGU_WEIGHT: [20]
+  
+DATASET:
+  DATA_SCALE: [1.,0.7,0.7]
+  OUTPUT_PATH: /home/ywang440/scratch/curvature_final/unet_3d/min20
+INFERENCE:
+  OUTPUT_PATH: /home/ywang440/scratch/curvature_final/results/unet_3d #outputs/curvature/20/val 
+  OUTPUT_NAME: min20.tif
+

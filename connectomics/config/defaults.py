@@ -245,14 +245,14 @@ _C.DATASET.LABEL_BINARY = True
 _C.DATASET.LABEL_MAG = 0
 
 # Data in tile format or not.
-_C.DATASET.DO_CHUNK_TITLE = 0
+_C.DATASET.DO_CHUNK_TITLE = 0 # 0: not chunked, 1: chunked
 
 # Chunk parameters for tile format: chunk_num (z,y,x), chunk_stride
-_C.DATASET.DATA_CHUNK_NUM = [1, 1, 1]
+_C.DATASET.DATA_CHUNK_NUM = [1,1,1]#[1, 1, 1]
 
 # Predefined data chunk to iterate through
-_C.DATASET.DATA_CHUNK_IND = None
-_C.DATASET.CHUNK_IND_SPLIT = None
+_C.DATASET.DATA_CHUNK_IND = None #list 
+_C.DATASET.CHUNK_IND_SPLIT = None #list - rank and world size for distributed training
 
 # For TileDataset, specify the coordintate range of data to use.
 # If not None, should be a list of format [z0, z1, y0, y1, x0, x1] applied to all volumes,

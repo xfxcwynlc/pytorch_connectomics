@@ -1,0 +1,84 @@
+SYSTEM:
+  NUM_GPUS: 2
+  NUM_CPUS: 6
+
+AUGMENTOR:
+  ENABLED: True
+  SMOOTH: False # Are others by default set to True? or no preprocessing
+  ELASTIC:
+    ENABLED: True
+  RESCALE:
+    ENABLED: True
+    P: 0.5
+  FLIP:
+    ENABLED: True
+  GRAYSCALE:
+    ENABLED: True
+  ROTATE:
+    ENABLED: True
+    ROT90: True
+
+DATASET:
+  DATA_SCALE: [1.,0.7,0.7]
+  OUTPUT_PATH: /home/ywang440/scratch/curvature_final/
+  VAS_LOGGER_ABS_PATH: /home/ywang440/models/ConnectomicsPytorch/pytorch_connectomics/outputs/Astrocytes/val
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME: 
+    - datasets/WT_cropped_1500/raw.tif
+    - datasets/WT_4_new_data/subV1(947-1054).tif
+    - datasets/WT_4_new_data/subV2(1130-1244).tif 
+    - datasets/WT_4_new_data/subV3(710-829).tif
+    #- datasets/WT_4_new_data/subV4(600-730).tif
+
+    # - datasets/1_cropped_1500/raw.tif
+  LABEL_NAME: 
+    - datasets/WT_cropped_1500/mask_composite.tif
+    - datasets/WT_4_new_data/V1_seg.tif
+    - datasets/WT_4_new_data/V2_seg.tif
+    - datasets/WT_4_new_data/V3_seg.tif
+    #- datasets/WT_4_new_data/V4_seg.tif
+  DISTRIBUTED: True
+  ENSURE_MIN_SIZE: True
+  NORMALIZE_RANGE: True
+  PAD_SIZE: [0, 0, 0]
+  REJECT_SAMPLING:
+    SIZE_THRES: 10000
+    P: 0.7
+  # DO_CHUNK_TITLE: 1
+  # DATA_CHUNK_NUM: [4, 8, 8]
+MODEL:
+  ARCHITECTURE: unet_3d
+  BLOCK_TYPE: residual_se
+  INPUT_SIZE: [16, 256, 256]
+  OUTPUT_SIZE: [16, 256, 256]
+  IN_PLANES: 1
+  OUT_PLANES: 1
+  LOSS_OPTION: [["WeightedBCEWithLogitsLoss", "DiceLoss"]]
+  LOSS_WEIGHT: [[1.0, 0.5]]
+  OUTPUT_ACT: [["none", "sigmoid"]]
+  WEIGHT_OPT: [['1', '0']]
+  NORM_MODE: sync_bn  #what is in stands for? 
+  
+SOLVER:
+  LR_SCHEDULER_NAME: WarmupCosineLR
+  BASE_LR: 0.02
+  ITERATION_STEP: 1
+  #ITERATION_VAL: 60000
+  ITERATION_SAVE: 25000
+  ITERATION_TOTAL: 125000
+  SAMPLES_PER_BATCH: 2
+# MONITOR:
+#   ITERATION_NUM: [50, 100]
+INFERENCE:
+  INPUT_SIZE: [16, 256, 256]
+  OUTPUT_SIZE: [16, 256, 256]
+  OUTPUT_ACT: ["sigmoid"]
+  IS_ABSOLUTE_PATH: True
+  IMAGE_NAME:  datasets/WT_4_new_data/subV4(600-730).tif
+  OUTPUT_PATH: /home/ywang440/scratch/curvature_final/subV4_results #outputs/curvature/20/val 
+  #PAD_SIZE: [8, 28, 28]
+  AUG_MODE: mean
+  AUG_NUM: 16
+  STRIDE: [8,128,128]
+  SAMPLES_PER_BATCH: 8
+
